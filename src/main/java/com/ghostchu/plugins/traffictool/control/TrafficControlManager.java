@@ -5,6 +5,7 @@ import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.proxy.InboundConnection;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.ConnectedPlayer;
 import com.velocitypowered.proxy.connection.client.InitialInboundConnection;
@@ -32,16 +33,20 @@ public class TrafficControlManager {
     public TrafficControlManager(TrafficTool plugin) {
         this.plugin = plugin;
         globalTrafficHandler = new GlobalTrafficShapingHandler(Executors.newScheduledThreadPool(plugin.getConfig().getInt("global-traffic-handler.scheduled-thread-pool-core-pool-size")), plugin.getConfig().getLong("global-traffic-handler.check-interval"));
-        plugin.getServer().getScheduler().buildTask(this, () -> {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
             channelTrafficHandler.removeIf(weakRef -> weakRef.get() == null);
-        }).repeat(1, TimeUnit.MINUTES);
-        plugin.getServer().getScheduler().buildTask(this, () -> {
+        }).repeat(1, TimeUnit.MINUTES).schedule();
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
             channelTrafficHandler.removeIf(weakRef -> weakRef.get() == null);
-        }).repeat(1, TimeUnit.SECONDS);
+        }).repeat(1, TimeUnit.SECONDS).schedule();
     }
 
-    public Optional<ChannelTrafficShapingHandler> getPlayerTrafficShapingHandler(ConnectedPlayer player) {
-        ChannelHandler handler = player.getConnection().getChannel().pipeline().get(CHANNEL_TRAFFIC_HANDLER_NAME);
+    public Optional<ChannelTrafficShapingHandler> getPlayerTrafficShapingHandler(Player player) {
+        if(!(player instanceof ConnectedPlayer)){
+            return Optional.empty();
+        }
+        ConnectedPlayer connectedPlayer = (ConnectedPlayer) player;
+        ChannelHandler handler = connectedPlayer.getConnection().getChannel().pipeline().get(CHANNEL_TRAFFIC_HANDLER_NAME);
         if (handler instanceof ChannelTrafficShapingHandler) {
             return Optional.of((ChannelTrafficShapingHandler) handler);
         }
@@ -69,6 +74,7 @@ public class TrafficControlManager {
             try {
                 LoginInboundConnection loginInboundConnection = (LoginInboundConnection) inbound;
                 Field delegate = loginInboundConnection.getClass().getDeclaredField("delegate");
+                delegate.setAccessible(true);
                 InitialInboundConnection initialInboundConnection = (InitialInboundConnection) delegate.get(loginInboundConnection);
                 minecraftConnection = initialInboundConnection.getConnection();
             } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -82,7 +88,6 @@ public class TrafficControlManager {
         minecraftConnection.getChannel().pipeline().addLast(GLOBAL_TRAFFIC_HANDLER_NAME, globalTrafficHandler);
         ChannelTrafficShapingHandler channelTrafficShapingHandler = new ChannelTrafficShapingHandler(plugin.getConfig().getLong("channel-traffic-handler.check-interval"));
         minecraftConnection.getChannel().pipeline().addLast(CHANNEL_TRAFFIC_HANDLER_NAME, channelTrafficShapingHandler);
-        channelTrafficShapingHandler.trafficCounter().start();
         plugin.getLogger().info("开始处理 {} ({}) 的流量数据", event.getUsername(), event.getConnection());
     }
 }

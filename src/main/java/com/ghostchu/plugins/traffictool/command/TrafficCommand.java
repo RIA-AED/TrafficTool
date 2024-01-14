@@ -31,7 +31,15 @@ public class TrafficCommand implements SimpleCommand {
             source.sendMessage(Component.text("错误的命令使用方法，请传递参数 view 或 config"));
             return;
         }
-        if (args[0].equalsIgnoreCase("view")) {
+        if(args[0].equalsIgnoreCase("upload")){
+            if (!source.hasPermission("traffictool.upload")) {
+                source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
+                return;
+            }
+            source.sendMessage(Component.text("正在手动上传到数据库……").color(NamedTextColor.GREEN));
+            plugin.recordMetricsToDatabase();
+
+        }else if (args[0].equalsIgnoreCase("view")) {
             if (!source.hasPermission("traffictool.view")) {
                 source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
                 return;
@@ -114,48 +122,47 @@ public class TrafficCommand implements SimpleCommand {
         invocation.source().sendMessage(Component.text("CheckInterval: " + handler.getCheckInterval()));
         invocation.source().sendMessage(Component.text("MaxTimeWait: " + handler.getMaxTimeWait()));
         invocation.source().sendMessage(Component.text("MaxWriteDelay: " + handler.getMaxWriteDelay()));
-        invocation.source().sendMessage(Component.text("MaxWriteSize: " + handler.getMaxWriteSize()));
-        invocation.source().sendMessage(Component.text("ReadLimit: " + handler.getReadLimit()));
-        invocation.source().sendMessage(Component.text("WriteLimit: " + handler.getWriteLimit()));
+        invocation.source().sendMessage(Component.text("MaxWriteSize: " +  TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(),false)));
+        invocation.source().sendMessage(Component.text("ReadLimit: " +  TrafficTool.humanReadableByteCount(handler.getReadLimit(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(),false)+"/interval"));
         invocation.source().sendMessage(Component.text("Queue Size: " + handler.queueSize()));
         invocation.source().sendMessage(Component.text("-----"));
         TrafficCounter counter = handler.trafficCounter();
-        invocation.source().sendMessage(Component.text("cumulativeReadBytes" + counter.cumulativeReadBytes()));
-        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes" + counter.cumulativeWrittenBytes()));
-        invocation.source().sendMessage(Component.text("currentReadBytes" + counter.currentReadBytes()));
-        invocation.source().sendMessage(Component.text("currentWrittenBytes" + counter.currentWrittenBytes()));
-        invocation.source().sendMessage(Component.text("getRealWriteThroughput" + counter.getRealWriteThroughput()));
-        invocation.source().sendMessage(Component.text("getRealWrittenBytes" + counter.getRealWrittenBytes()));
-        invocation.source().sendMessage(Component.text("lastCumulativeTime" + counter.lastCumulativeTime()));
-        invocation.source().sendMessage(Component.text("lastReadBytes" + counter.lastReadBytes()));
-        invocation.source().sendMessage(Component.text("lastReadThroughput" + counter.lastReadThroughput()));
-        invocation.source().sendMessage(Component.text("lastWriteThroughput" + counter.lastWriteThroughput()));
-        invocation.source().sendMessage(Component.text("lastWrittenBytes" + counter.lastWrittenBytes()));
+        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(),false)));
+        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(),false)));
+        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(),false)));
+        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(),false)));
+        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(),false)));
+        invocation.source().sendMessage(Component.text("lastCumulativeTime: " + counter.lastCumulativeTime()));
+        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(),false)));
+        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(),false)));
     }
 
     private void viewGlobal(Invocation invocation) {
-        GlobalTrafficShapingHandler gHandler = plugin.getTrafficControlManager().getGlobalTrafficHandler();
-        invocation.source().sendMessage(Component.text("CheckInterval: " + gHandler.getCheckInterval()));
-        invocation.source().sendMessage(Component.text("MaxGlobalWriteSize：" + gHandler.getMaxGlobalWriteSize()));
-        invocation.source().sendMessage(Component.text("MaxTimeWait: " + gHandler.getMaxTimeWait()));
-        invocation.source().sendMessage(Component.text("MaxWriteDelay: " + gHandler.getMaxWriteDelay()));
-        invocation.source().sendMessage(Component.text("MaxWriteSize: " + gHandler.getMaxWriteSize()));
-        invocation.source().sendMessage(Component.text("ReadLimit: " + gHandler.getReadLimit()));
-        invocation.source().sendMessage(Component.text("WriteLimit: " + gHandler.getWriteLimit()));
-        invocation.source().sendMessage(Component.text("Queue Size: " + gHandler.queuesSize()));
+        GlobalTrafficShapingHandler handler = plugin.getTrafficControlManager().getGlobalTrafficHandler();
+        invocation.source().sendMessage(Component.text("CheckInterval: " + handler.getCheckInterval()));
+        invocation.source().sendMessage(Component.text("MaxTimeWait: " + handler.getMaxTimeWait()));
+        invocation.source().sendMessage(Component.text("MaxWriteDelay: " + handler.getMaxWriteDelay()));
+        invocation.source().sendMessage(Component.text("MaxWriteSize: " +  TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(),false)));
+        invocation.source().sendMessage(Component.text("ReadLimit: " +  TrafficTool.humanReadableByteCount(handler.getReadLimit(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("Queue(s) Size: " + handler.queuesSize()));
         invocation.source().sendMessage(Component.text("-----"));
-        TrafficCounter counter = gHandler.trafficCounter();
-        invocation.source().sendMessage(Component.text("cumulativeReadBytes" + counter.cumulativeReadBytes()));
-        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes" + counter.cumulativeWrittenBytes()));
-        invocation.source().sendMessage(Component.text("currentReadBytes" + counter.currentReadBytes()));
-        invocation.source().sendMessage(Component.text("currentWrittenBytes" + counter.currentWrittenBytes()));
-        invocation.source().sendMessage(Component.text("getRealWriteThroughput" + counter.getRealWriteThroughput()));
-        invocation.source().sendMessage(Component.text("getRealWrittenBytes" + counter.getRealWrittenBytes()));
-        invocation.source().sendMessage(Component.text("lastCumulativeTime" + counter.lastCumulativeTime()));
-        invocation.source().sendMessage(Component.text("lastReadBytes" + counter.lastReadBytes()));
-        invocation.source().sendMessage(Component.text("lastReadThroughput" + counter.lastReadThroughput()));
-        invocation.source().sendMessage(Component.text("lastWriteThroughput" + counter.lastWriteThroughput()));
-        invocation.source().sendMessage(Component.text("lastWrittenBytes" + counter.lastWrittenBytes()));
+        TrafficCounter counter = handler.trafficCounter();
+        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(),false)));
+        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(),false)));
+        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(),false)));
+        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(),false)));
+        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(),false)));
+        invocation.source().sendMessage(Component.text("lastCumulativeTime: " + counter.lastCumulativeTime()));
+        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(),false)));
+        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(),false)));
     }
 
     // This method allows you to control who can execute the command.

@@ -5,6 +5,7 @@ import cc.carm.lib.easysql.hikari.HikariConfig;
 import cc.carm.lib.easysql.hikari.HikariDataSource;
 import cc.carm.lib.easysql.manager.SQLManagerImpl;
 import com.ghostchu.plugins.traffictool.TrafficTool;
+import com.mysql.cj.jdbc.Driver;
 import org.bspfsystems.yamlconfiguration.configuration.ConfigurationSection;
 
 public class DatabaseManager {
@@ -20,6 +21,11 @@ public class DatabaseManager {
     }
 
     private void init() {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         ConfigurationSection databaseSection = plugin.getConfig().getConfigurationSection("database");
         if (databaseSection == null) throw new IllegalArgumentException("Database section 不能为空");
         HikariConfig config = HikariUtil.createHikariConfig(databaseSection.getConfigurationSection("properties"));

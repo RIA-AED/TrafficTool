@@ -49,22 +49,8 @@
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-shade-plugin</artifactId>
-                        <version>3.2.4</version>
+                        <version>3.5.1</version>
                         <executions>
                             <execution>
                                 <phase>package</phase>
@@ -77,6 +63,10 @@
                                         <relocation>
                                             <pattern>org.bspfsystems.yamlconfiguration.</pattern>
                                             <shadedPattern>com.ghostchu.plugins.traffictool.shade.org.bspfsystems.yamlconfiguration.</shadedPattern>
+                                        </relocation>
+                                        <relocation>
+                                            <pattern>com.mysql.</pattern>
+                                            <shadedPattern>com.ghostchu.plugins.traffictool.shade.com.mysql.</shadedPattern>
                                         </relocation>
                                     </relocations>
                                 </configuration>
@@ -199,5 +189,13 @@
             <version>24.1.0</version>
             <scope>provided</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.mysql/mysql-connector-j -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.2.0</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 </project>

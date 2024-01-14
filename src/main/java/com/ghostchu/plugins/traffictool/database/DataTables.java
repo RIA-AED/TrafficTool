@@ -15,9 +15,9 @@ import java.sql.SQLException;
 public enum DataTables {
 
     TRAFFIC_GLOBAL("traffic_global", (table) -> {
-        table.addColumn("id", "INT NOT NULL PRIMARY KEY");
-        table.addColumn("logging_at", "DATETIME NOTNULL");
-        table.addColumn("lastTime", "DATETIME NOTNULL");
+        table.addColumn("id", "INT NOT NULL PRIMARY KEY AUTO_INCREMENT");
+        table.addColumn("logging_at", "DATETIME NOT NULL");
+        table.addColumn("lastTime", "BIGINT NOT NULL");
         table.addColumn("cumulativeReadBytes", "BIGINT NOT NULL");
         table.addColumn("cumulativeWrittenBytes", "BIGINT NOT NULL");
         table.addColumn("currentReadBytes", "BIGINT NOT NULL");
@@ -30,13 +30,19 @@ public enum DataTables {
         table.addColumn("lastWriteThroughput", "BIGINT NOT NULL");
         table.addColumn("lastWrittenBytes", "BIGINT NOT NULL");
         table.addColumn("maxGlobalWriteSize", "BIGINT NOT NULL");
+        table.addColumn("queuesSize", "BIGINT NOT NULL");
+        table.addColumn("maxTimeWait", "BIGINT NOT NULL");
+        table.addColumn("maxWriteDelay", "BIGINT NOT NULL");
+        table.addColumn("maxWriteSize", "BIGINT NOT NULL");
+        table.addColumn("readLimit", "BIGINT NOT NULL");
+        table.addColumn("writeLimit", "BIGINT NOT NULL");
     }),
     TRAFFIC_PLAYER("traffic_player", (table) -> {
-        table.addColumn("id", "INT NOT NULL PRIMARY KEY");
-        table.addColumn("uuid", "VARCHAR(36) NOT NULL PRIMARY KEY");
-        table.addColumn("username", "VARCHAR(36) NOT NULL PRIMARY KEY");
-        table.addColumn("logging_at", "DATETIME NOTNULL");
-        table.addColumn("lastTime", "DATETIME NOTNULL");
+        table.addColumn("id", "INT NOT NULL PRIMARY KEY AUTO_INCREMENT");
+        table.addColumn("uuid", "VARCHAR(36) NOT NULL");
+        table.addColumn("username", "VARCHAR(36) NOT NULL");
+        table.addColumn("logging_at", "DATETIME NOT NULL");
+        table.addColumn("lastTime", "BIGINT NOT NULL");
         table.addColumn("cumulativeReadBytes", "BIGINT NOT NULL");
         table.addColumn("cumulativeWrittenBytes", "BIGINT NOT NULL");
         table.addColumn("currentReadBytes", "BIGINT NOT NULL");
