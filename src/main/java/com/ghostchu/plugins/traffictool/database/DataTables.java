@@ -29,6 +29,7 @@ public enum DataTables {
         table.addColumn("lastReadThroughput", "BIGINT NOT NULL");
         table.addColumn("lastWriteThroughput", "BIGINT NOT NULL");
         table.addColumn("lastWrittenBytes", "BIGINT NOT NULL");
+        table.addColumn("maxGlobalWriteSize", "BIGINT NOT NULL");
     }),
     TRAFFIC_PLAYER("traffic_player", (table) -> {
         table.addColumn("id", "INT NOT NULL PRIMARY KEY");
