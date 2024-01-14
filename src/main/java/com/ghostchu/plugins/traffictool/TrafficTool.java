@@ -73,6 +73,7 @@ public class TrafficTool {
         }
         this.config = YamlConfiguration.loadConfiguration(configFile);
         this.trafficControlManager = new TrafficControlManager(this);
+        server.getEventManager().register(this, this.trafficControlManager);
         setupDatabase();
     }
 
@@ -96,6 +97,7 @@ public class TrafficTool {
     public Logger getLogger() {
         return logger;
     }
+
     public TrafficControlManager getTrafficControlManager() {
         return trafficControlManager;
     }
