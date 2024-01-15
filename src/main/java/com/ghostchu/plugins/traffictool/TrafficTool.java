@@ -11,6 +11,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.proxy.connection.client.ConnectedPlayer;
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
@@ -68,7 +69,7 @@ public class TrafficTool {
         server.getCommandManager().register(commandMeta, new TrafficCommand(this));
         try {
             setupDatabase();
-            server.getScheduler().buildTask(this, this::recordMetricsToDatabase).repeat(3, TimeUnit.MINUTES).schedule();
+            server.getScheduler().buildTask(this, this::recordMetricsToDatabase).delay(5, TimeUnit.SECONDS).repeat(3, TimeUnit.MINUTES).schedule();
         } catch (Throwable th) {
             logger.warn("无法初始化数据库，停止自动上传");
         }
@@ -89,27 +90,45 @@ public class TrafficTool {
                         gCounter.lastWriteThroughput(), gCounter.lastWrittenBytes(), gHandler.getMaxGlobalWriteSize(),
                         gHandler.queuesSize(), gHandler.getMaxTimeWait(), gHandler.getMaxWriteDelay(), gHandler.getMaxWriteSize(),
                         gHandler.getReadLimit(), gHandler.getWriteLimit())
-                .executeAsync(null, (err, sql) -> logger.warn("无法向数据库记录全局流量数据，数据已被丢弃", err));
+                .executeFuture()
+                .thenAccept(sql -> logger.info("上送全局流量和带宽样本成功"))
+                .exceptionally(err -> {
+                    logger.warn("上送全局流量和带宽样本失败", err);
+                    return null;
+                });
+
+
         PreparedSQLUpdateBatchAction<Integer> batchAction = DataTables.TRAFFIC_PLAYER.createInsertBatch()
-                .setColumnNames("uuid", "username", "logging_at", "lastTime", "cumulativeReadBytes", "cumulativeWrittenBytes", "currentReadBytes",
-                        "currentWrittenBytes", "getRealWriteThroughput", "getRealWrittenBytes", "lastCumulativeTime", "lastReadBytes",
-                        "lastReadThroughput", "lastWriteThroughput", "lastWrittenBytes", "queueSize", "maxTimeWait", "maxWriteDelay", "maxWriteSize", "readLimit", "writeLimit");
-        server.getAllPlayers().forEach(p -> {
-            if(p instanceof ConnectedPlayer connectedPlayer) {
+                .setColumnNames("uuid", "username", "logging_at", "lastTime",
+                        "cumulativeReadBytes", "cumulativeWrittenBytes", "currentReadBytes",
+                        "currentWrittenBytes", "getRealWriteThroughput", "getRealWrittenBytes",
+                        "lastCumulativeTime", "lastReadBytes", "lastReadThroughput",
+                        "lastWriteThroughput", "lastWrittenBytes", "queueSize",
+                        "maxTimeWait", "maxWriteDelay", "maxWriteSize",
+                        "readLimit", "writeLimit");
+        for (Player p : server.getAllPlayers()) {
+            if (p instanceof ConnectedPlayer connectedPlayer) {
                 Optional<ChannelTrafficShapingHandler> opt = trafficControlManager.getPlayerTrafficShapingHandler(connectedPlayer);
-                if (opt.isEmpty()) return;
+                if (opt.isEmpty()) continue;
                 ChannelTrafficShapingHandler cHandler = opt.get();
                 TrafficCounter cCounter = cHandler.trafficCounter();
                 batchAction.addParamsBatch(p.getUniqueId(), p.getUsername(), LocalDateTime.now(), cCounter.lastTime(),
                         cCounter.cumulativeReadBytes(), cCounter.cumulativeWrittenBytes(), cCounter.currentReadBytes(),
                         cCounter.currentWrittenBytes(), cCounter.getRealWriteThroughput(), cCounter.getRealWrittenBytes(),
                         cCounter.lastCumulativeTime(), cCounter.lastReadBytes(), cCounter.lastReadThroughput(),
-                        cCounter.lastWriteThroughput(), cCounter.lastWrittenBytes(),
-                        cHandler.queueSize(), cHandler.getMaxTimeWait(), cHandler.getMaxWriteDelay(), cHandler.getMaxWriteSize(),
+                        cCounter.lastWriteThroughput(), cCounter.lastWrittenBytes(), cHandler.queueSize(),
+                        cHandler.getMaxTimeWait(), cHandler.getMaxWriteDelay(), cHandler.getMaxWriteSize(),
                         cHandler.getReadLimit(), cHandler.getWriteLimit());
+            } else {
+                getLogger().warn("{} 不是一个 ConnectedPlayer", p.getUsername());
             }
-        });
-        batchAction.executeAsync(null, (err, sql) -> logger.warn("无法向数据库记录个人流量数据，相关数据已被丢弃", err));
+        }
+        batchAction.executeFuture()
+                .thenAccept(sql -> logger.info("上送批量个人流量和带宽样本成功"))
+                .exceptionally(err -> {
+                    logger.warn("上送批量个人流量和带宽数据失败", err);
+                    return null;
+                });
     }
 
     public YamlConfiguration getConfig() {

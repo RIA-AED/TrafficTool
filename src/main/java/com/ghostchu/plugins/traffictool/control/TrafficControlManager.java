@@ -62,6 +62,8 @@ public class TrafficControlManager {
             Optional<ChannelTrafficShapingHandler> handlerOptional = getPlayerTrafficShapingHandler(connectedPlayer);
             handler = handlerOptional.orElseGet(() -> injectConnection(connectedPlayer.getConnection()));
             TrafficShapingRule rule = getTrafficShapingRule(connectedPlayer);
+            boolean anyUpdate = handler.getWriteLimit() != rule.getWriteLimit();
+            if(handler.getReadLimit() != rule.getReadLimit()) anyUpdate = true;
             handler.setWriteLimit(rule.getWriteLimit());
             handler.setReadLimit(rule.getReadLimit());
             String writeLimitString = "无整形";
@@ -73,16 +75,20 @@ public class TrafficControlManager {
                 readLimitString = TrafficTool.humanReadableByteCount(rule.getReadLimit(), false) + "/" + handler.getCheckInterval() + "ms";
             }
             plugin.getLogger().info("Rule for player {}: W: {} R:{}, Bypass: {}", connectedPlayer.getUsername(), rule.getWriteLimit(), rule.getReadLimit(), rule.isBypass());
-            if (plugin.getConfig().getBoolean("send-traffic-rule-update-notification")) {
+            if (plugin.getConfig().getBoolean("send-traffic-rule-update-notification") && anyUpdate) {
                 StringBuilder builder = new StringBuilder();
                 builder.append("已应用的流量整型规则如下：").append("\n");
                 builder.append("\n");
                 builder.append("写限制: ").append(writeLimitString).append("\n");
-                builder.append("读限制：").append(readLimitString).append("\n");
+                builder.append("读限制: ").append(readLimitString).append("\n");
                 builder.append("\n");
                 builder.append("使用 /traffic me 查看您的连接的详细信息");
+                String base ="[TrafficTool] 您的连接的流量整形规则已更新";
+                if(rule.isBypass()){
+                    base = "[TrafficTool] 您的连接的流量整形规则已更新（管理员豁免）";
+                }
                 player.sendMessage(
-                        Component.text("[TrafficTool] 您的连接的流量整形规则已更新")
+                        Component.text(base)
                                 .color(NamedTextColor.DARK_GRAY)
                                 .hoverEvent(HoverEvent.showText(Component.text(builder.toString())))
                 );

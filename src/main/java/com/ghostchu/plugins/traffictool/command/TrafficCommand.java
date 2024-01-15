@@ -86,8 +86,8 @@ public class TrafficCommand implements SimpleCommand {
         ChannelTrafficShapingHandler handler = cHandlerOptional.get();
         TrafficCounter counter = handler.trafficCounter();
         player.sendMessage(Component.text("[TrafficTool] 您当前的套接字属性如下："));
-        player.sendMessage(Component.text("写速率限制：" + handler.getWriteLimit() + "/" + handler.getCheckInterval() + "ms"));
-        player.sendMessage(Component.text("读速率限制：" + handler.getWriteLimit() + "/" + handler.getCheckInterval() + "ms"));
+        player.sendMessage(Component.text("写速率限制：" + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
+        player.sendMessage(Component.text("读速率限制：" + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
         player.sendMessage(Component.text("包队列大小：" + handler.queueSize() +" (长时间或过多的包堆积将导致 Ping 升高)"));
         player.sendMessage(Component.text("---------------"));
         invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
