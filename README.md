@@ -17,7 +17,7 @@ Velocity 玩家流量整型和统计工具。
 * /traffic view global <player> - 浏览指定玩家的实时流量数据
 * /traffic upload - 手动上传当前实时流量数据到数据库用作分析
 * /traffic config global <连接最大写速度> <连接最大读速度> - 设置Velocity网络的流量整形（可以理解为进程限速）
-* /traffic config player <连接最大写速度> <连接最大读速度> - 设置指定玩家的本次连接的流量整形
+* /traffic config player <用户名> <连接最大写速度> <连接最大读速度> - 设置指定玩家的本次连接的流量整形
 * /traffic me - 查看自己的连接参数
 
 ## 示例返回
