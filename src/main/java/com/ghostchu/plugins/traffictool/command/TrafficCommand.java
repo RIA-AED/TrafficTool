@@ -1,7 +1,6 @@
 package com.ghostchu.plugins.traffictool.command;
 
 import com.ghostchu.plugins.traffictool.TrafficTool;
-import com.ghostchu.plugins.traffictool.control.compression.CompressionManager;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
@@ -65,24 +64,7 @@ public class TrafficCommand implements SimpleCommand {
             if (args[1].equalsIgnoreCase("player")) {
                 configPlayer(invocation);
             }
-        } else if (args[0].equalsIgnoreCase("compression")) {
-            if (!source.hasPermission("traffictool.compression")) {
-                source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
-                return;
-            }
-            viewCompressionData(invocation);
         }
-    }
-
-    private void viewCompressionData(Invocation invocation) {
-        CompressionManager compressionManager = plugin.getCompressionManager();
-        invocation.source().sendMessage(Component.text("Total length handled: " + TrafficTool.humanReadableByteCount(compressionManager.totalLengthHandled.get(), false)));
-        invocation.source().sendMessage(Component.text("Velocity compression saved bytes: " + TrafficTool.humanReadableByteCount(compressionManager.velocitySavedBytes.get(), false)));
-        invocation.source().sendMessage(Component.text("Velocity compression wasted bytes: " + TrafficTool.humanReadableByteCount(compressionManager.velocityWasteBytes.get(), false)));
-        invocation.source().sendMessage(Component.text("Velocity compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.velocityWasteCount.get(), false)));
-        invocation.source().sendMessage(Component.text("Brotil compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.brotilSavedBytes.get(), false)));
-        invocation.source().sendMessage(Component.text("Brotil compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.brotilWasteBytes.get(), false)));
-        invocation.source().sendMessage(Component.text("Brotil compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.brotilWasteCount.get(), false)));
     }
 
     private void configPlayer(Invocation invocation) {

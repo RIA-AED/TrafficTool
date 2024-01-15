@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.ghostchu.plugins</groupId>
-    <artifactId>TrafficHelper</artifactId>
+    <artifactId>TrafficTool</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 

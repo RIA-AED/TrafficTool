@@ -1,8 +1,6 @@
 package com.ghostchu.plugins.traffictool.control;
 
 import com.ghostchu.plugins.traffictool.TrafficTool;
-import com.ghostchu.plugins.traffictool.control.compression.CompressionManager;
-import com.ghostchu.plugins.traffictool.control.compression.CompressionMetricHandler;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
@@ -16,7 +14,6 @@ import com.velocitypowered.proxy.connection.client.LoginInboundConnection;
 import io.netty.channel.ChannelHandler;
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
 import io.netty.handler.traffic.GlobalTrafficShapingHandler;
-import io.netty.handler.traffic.TrafficCounter;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -33,11 +30,9 @@ public class TrafficControlManager {
     private final TrafficTool plugin;
     private final GlobalTrafficShapingHandler globalTrafficHandler;
     private final List<WeakReference<ChannelTrafficShapingHandler>> channelTrafficHandler = new CopyOnWriteArrayList<>();
-    private CompressionMetricHandler handler;
 
-    public TrafficControlManager(TrafficTool plugin, CompressionManager compressionManager) {
+    public TrafficControlManager(TrafficTool plugin) {
         this.plugin = plugin;
-        this.handler = new CompressionMetricHandler(compressionManager);
         globalTrafficHandler = new GlobalTrafficShapingHandler(Executors.newScheduledThreadPool(plugin.getConfig().getInt("global-traffic-handler.scheduled-thread-pool-core-pool-size")), plugin.getConfig().getLong("global-traffic-handler.check-interval"));
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             channelTrafficHandler.removeIf(weakRef -> weakRef.get() == null);
@@ -63,11 +58,6 @@ public class TrafficControlManager {
             return Optional.of((ChannelTrafficShapingHandler) handler);
         }
         return Optional.empty();
-    }
-
-    private void a() {
-        TrafficCounter counter;
-        ChannelTrafficShapingHandler handler;
     }
 
     public GlobalTrafficShapingHandler getGlobalTrafficHandler() {
@@ -100,12 +90,13 @@ public class TrafficControlManager {
         }
         injectConnection(minecraftConnection);
     }
+
     @Subscribe(order = PostOrder.LAST)
     public void playerConnected(ServerConnectedEvent event) {
-       Player player = event.getPlayer();
-       if(player instanceof ConnectedPlayer connectedPlayer){
-           injectConnection(connectedPlayer.getConnection());
-       }
+        Player player = event.getPlayer();
+        if (player instanceof ConnectedPlayer connectedPlayer) {
+            injectConnection(connectedPlayer.getConnection());
+        }
     }
 
     public void injectConnection(MinecraftConnection minecraftConnection) {
@@ -115,20 +106,13 @@ public class TrafficControlManager {
         if (minecraftConnection.getChannel().pipeline().get(CHANNEL_TRAFFIC_HANDLER_NAME) != null) {
             minecraftConnection.getChannel().pipeline().remove(CHANNEL_TRAFFIC_HANDLER_NAME);
         }
+        // 生产环境移除遗留模块的 pipeline
+        if(minecraftConnection.getChannel().pipeline().get(GLOBAL_COMPRESSION_METRIC_NAME) != null){
+            minecraftConnection.getChannel().pipeline().remove(GLOBAL_COMPRESSION_METRIC_NAME);
+        }
         minecraftConnection.getChannel().pipeline().addLast(GLOBAL_TRAFFIC_HANDLER_NAME, globalTrafficHandler);
         ChannelTrafficShapingHandler channelTrafficShapingHandler = new ChannelTrafficShapingHandler(plugin.getConfig().getLong("channel-traffic-handler.check-interval"));
         minecraftConnection.getChannel().pipeline().addLast(CHANNEL_TRAFFIC_HANDLER_NAME, channelTrafficShapingHandler);
-        startMetricForCompression(minecraftConnection);
-    }
-
-    private void startMetricForCompression(MinecraftConnection minecraftConnection) {
-        if (minecraftConnection.getChannel().pipeline().get(GLOBAL_COMPRESSION_METRIC_NAME) != null) {
-            minecraftConnection.getChannel().pipeline().remove(GLOBAL_COMPRESSION_METRIC_NAME);
-        }
-        if (minecraftConnection.getChannel().pipeline().get("compression-decoder") != null) {
-            plugin.getLogger().info("压缩比开始统计！");
-            minecraftConnection.getChannel().pipeline().addBefore("compression-decoder", GLOBAL_COMPRESSION_METRIC_NAME, this.handler);
-        }
     }
 
 }
