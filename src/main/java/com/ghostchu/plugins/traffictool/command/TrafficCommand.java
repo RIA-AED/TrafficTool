@@ -1,6 +1,7 @@
 package com.ghostchu.plugins.traffictool.command;
 
 import com.ghostchu.plugins.traffictool.TrafficTool;
+import com.ghostchu.plugins.traffictool.control.compression.CompressionManager;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
@@ -28,18 +29,17 @@ public class TrafficCommand implements SimpleCommand {
         CommandSource source = invocation.source();
         String[] args = invocation.arguments();
         if (args.length < 2) {
-            source.sendMessage(Component.text("错误的命令使用方法，请传递参数 view 或 config"));
+            source.sendMessage(Component.text("错误的命令使用方法，请传递参数 view 或 config 或 compression，参数不足 2 时随意填写补足"));
             return;
         }
-        if(args[0].equalsIgnoreCase("upload")){
+        if (args[0].equalsIgnoreCase("upload")) {
             if (!source.hasPermission("traffictool.upload")) {
                 source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
                 return;
             }
             source.sendMessage(Component.text("正在手动上传到数据库……").color(NamedTextColor.GREEN));
             plugin.recordMetricsToDatabase();
-
-        }else if (args[0].equalsIgnoreCase("view")) {
+        } else if (args[0].equalsIgnoreCase("view")) {
             if (!source.hasPermission("traffictool.view")) {
                 source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
                 return;
@@ -65,7 +65,24 @@ public class TrafficCommand implements SimpleCommand {
             if (args[1].equalsIgnoreCase("player")) {
                 configPlayer(invocation);
             }
+        } else if (args[0].equalsIgnoreCase("compression")) {
+            if (!source.hasPermission("traffictool.compression")) {
+                source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
+                return;
+            }
+            viewCompressionData(invocation);
         }
+    }
+
+    private void viewCompressionData(Invocation invocation) {
+        CompressionManager compressionManager = plugin.getCompressionManager();
+        invocation.source().sendMessage(Component.text("Total length handled: " + TrafficTool.humanReadableByteCount(compressionManager.totalLengthHandled.get(), false)));
+        invocation.source().sendMessage(Component.text("Velocity compression saved bytes: " + TrafficTool.humanReadableByteCount(compressionManager.velocitySavedBytes.get(), false)));
+        invocation.source().sendMessage(Component.text("Velocity compression wasted bytes: " + TrafficTool.humanReadableByteCount(compressionManager.velocityWasteBytes.get(), false)));
+        invocation.source().sendMessage(Component.text("Velocity compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.velocityWasteCount.get(), false)));
+        invocation.source().sendMessage(Component.text("Brotil compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.brotilSavedBytes.get(), false)));
+        invocation.source().sendMessage(Component.text("Brotil compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.brotilWasteBytes.get(), false)));
+        invocation.source().sendMessage(Component.text("Brotil compression wasted count: " + TrafficTool.humanReadableByteCount(compressionManager.brotilWasteCount.get(), false)));
     }
 
     private void configPlayer(Invocation invocation) {
@@ -107,11 +124,10 @@ public class TrafficCommand implements SimpleCommand {
             invocation.source().sendMessage(Component.text("玩家不存在！").color(NamedTextColor.RED));
             return;
         }
-        if (!(player instanceof ConnectedPlayer)) {
+        if (!(player instanceof ConnectedPlayer connectedPlayer)) {
             invocation.source().sendMessage(Component.text("无效对象转换，此玩未继承 ConnectedPlayer").color(NamedTextColor.RED));
             return;
         }
-        ConnectedPlayer connectedPlayer = (ConnectedPlayer) player;
         Optional<ChannelTrafficShapingHandler> cHandlerOptional = plugin.getTrafficControlManager().getPlayerTrafficShapingHandler(connectedPlayer);
         if (cHandlerOptional.isEmpty()) {
             invocation.source().sendMessage(Component.text("此玩家 Pipeline 未注册 ChannelTrafficShapingHandler，操作失败！").color(NamedTextColor.RED));
@@ -122,23 +138,23 @@ public class TrafficCommand implements SimpleCommand {
         invocation.source().sendMessage(Component.text("CheckInterval: " + handler.getCheckInterval()));
         invocation.source().sendMessage(Component.text("MaxTimeWait: " + handler.getMaxTimeWait()));
         invocation.source().sendMessage(Component.text("MaxWriteDelay: " + handler.getMaxWriteDelay()));
-        invocation.source().sendMessage(Component.text("MaxWriteSize: " +  TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(),false)));
-        invocation.source().sendMessage(Component.text("ReadLimit: " +  TrafficTool.humanReadableByteCount(handler.getReadLimit(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("MaxWriteSize: " + TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(), false)));
+        invocation.source().sendMessage(Component.text("ReadLimit: " + TrafficTool.humanReadableByteCount(handler.getReadLimit(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(), false) + "/interval"));
         invocation.source().sendMessage(Component.text("Queue Size: " + handler.queueSize()));
         invocation.source().sendMessage(Component.text("-----"));
         TrafficCounter counter = handler.trafficCounter();
-        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(),false)));
-        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(),false)));
-        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(),false)));
-        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(),false)));
-        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(),false)));
+        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(), false)));
+        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(), false)));
+        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(), false)));
+        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(), false)));
+        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(), false)));
         invocation.source().sendMessage(Component.text("lastCumulativeTime: " + counter.lastCumulativeTime()));
-        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(),false)));
-        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(),false)));
+        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(), false)));
+        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(), false)));
     }
 
     private void viewGlobal(Invocation invocation) {
@@ -146,23 +162,23 @@ public class TrafficCommand implements SimpleCommand {
         invocation.source().sendMessage(Component.text("CheckInterval: " + handler.getCheckInterval()));
         invocation.source().sendMessage(Component.text("MaxTimeWait: " + handler.getMaxTimeWait()));
         invocation.source().sendMessage(Component.text("MaxWriteDelay: " + handler.getMaxWriteDelay()));
-        invocation.source().sendMessage(Component.text("MaxWriteSize: " +  TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(),false)));
-        invocation.source().sendMessage(Component.text("ReadLimit: " +  TrafficTool.humanReadableByteCount(handler.getReadLimit(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(),false)+"/interval"));
+        invocation.source().sendMessage(Component.text("MaxWriteSize: " + TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(), false)));
+        invocation.source().sendMessage(Component.text("ReadLimit: " + TrafficTool.humanReadableByteCount(handler.getReadLimit(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(), false) + "/interval"));
         invocation.source().sendMessage(Component.text("Queue(s) Size: " + handler.queuesSize()));
         invocation.source().sendMessage(Component.text("-----"));
         TrafficCounter counter = handler.trafficCounter();
-        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(),false)));
-        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(),false)));
-        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(),false)));
-        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(),false)));
-        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(),false)));
+        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(), false)));
+        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(), false)));
+        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(), false)));
+        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(), false)));
+        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(), false)));
         invocation.source().sendMessage(Component.text("lastCumulativeTime: " + counter.lastCumulativeTime()));
-        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(),false)));
-        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(),false)+"/interval"));
-        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(),false)));
+        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(), false)));
+        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(), false) + "/interval"));
+        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(), false)));
     }
 
     // This method allows you to control who can execute the command.
@@ -179,6 +195,9 @@ public class TrafficCommand implements SimpleCommand {
         }
         if (invocation.arguments()[0].equalsIgnoreCase("config")) {
             return invocation.source().hasPermission("traffictool.config");
+        }
+        if (invocation.arguments()[0].equalsIgnoreCase("compression")) {
+            return invocation.source().hasPermission("traffictool.compression");
         }
         return invocation.source().hasPermission("traffictool.help");
     }

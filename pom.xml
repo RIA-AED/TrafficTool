@@ -68,6 +68,10 @@
                                             <pattern>com.mysql.</pattern>
                                             <shadedPattern>com.ghostchu.plugins.traffictool.shade.com.mysql.</shadedPattern>
                                         </relocation>
+                                        <relocation>
+                                            <pattern>com.aayushatharva.brotli4j.</pattern>
+                                            <shadedPattern>com.ghostchu.plugins.traffictool.shade.com.aayushatharva.brotli4j.</shadedPattern>
+                                        </relocation>
                                     </relocations>
                                 </configuration>
                             </execution>
@@ -196,6 +200,12 @@
             <version>8.2.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>com.aayushatharva.brotli4j</groupId>
+            <artifactId>brotli4j</artifactId>
+            <version>1.15.0</version>
+        </dependency>
+
 
     </dependencies>
 </project>

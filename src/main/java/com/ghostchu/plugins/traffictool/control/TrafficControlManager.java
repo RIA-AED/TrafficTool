@@ -1,9 +1,12 @@
 package com.ghostchu.plugins.traffictool.control;
 
 import com.ghostchu.plugins.traffictool.TrafficTool;
+import com.ghostchu.plugins.traffictool.control.compression.CompressionManager;
+import com.ghostchu.plugins.traffictool.control.compression.CompressionMetricHandler;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
+import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.proxy.InboundConnection;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
@@ -24,14 +27,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class TrafficControlManager {
-    private static final String GLOBAL_TRAFFIC_HANDLER_NAME = "TrafficTool-GlobalTrafficHandler";
-    private static final String CHANNEL_TRAFFIC_HANDLER_NAME = "TrafficTool-ChannelTrafficHandler";
+    private static final String GLOBAL_TRAFFIC_HANDLER_NAME = "traffictool-global-traffic-handler";
+    private static final String CHANNEL_TRAFFIC_HANDLER_NAME = "traffictool-channel-traffic-handler";
+    private static final String GLOBAL_COMPRESSION_METRIC_NAME = "traffictool-global-compression-metric-handler";
     private final TrafficTool plugin;
     private final GlobalTrafficShapingHandler globalTrafficHandler;
     private final List<WeakReference<ChannelTrafficShapingHandler>> channelTrafficHandler = new CopyOnWriteArrayList<>();
+    private CompressionMetricHandler handler;
 
-    public TrafficControlManager(TrafficTool plugin) {
+    public TrafficControlManager(TrafficTool plugin, CompressionManager compressionManager) {
         this.plugin = plugin;
+        this.handler = new CompressionMetricHandler(compressionManager);
         globalTrafficHandler = new GlobalTrafficShapingHandler(Executors.newScheduledThreadPool(plugin.getConfig().getInt("global-traffic-handler.scheduled-thread-pool-core-pool-size")), plugin.getConfig().getLong("global-traffic-handler.check-interval"));
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             channelTrafficHandler.removeIf(weakRef -> weakRef.get() == null);
@@ -39,10 +45,16 @@ public class TrafficControlManager {
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             channelTrafficHandler.removeIf(weakRef -> weakRef.get() == null);
         }).repeat(1, TimeUnit.SECONDS).schedule();
+        plugin.getServer().getAllPlayers().forEach(p -> {
+            if (!(p instanceof ConnectedPlayer connectedPlayer)) {
+                return;
+            }
+            injectConnection(connectedPlayer.getConnection());
+        });
     }
 
     public Optional<ChannelTrafficShapingHandler> getPlayerTrafficShapingHandler(Player player) {
-        if(!(player instanceof ConnectedPlayer)){
+        if (!(player instanceof ConnectedPlayer)) {
             return Optional.empty();
         }
         ConnectedPlayer connectedPlayer = (ConnectedPlayer) player;
@@ -52,7 +64,8 @@ public class TrafficControlManager {
         }
         return Optional.empty();
     }
-    private void a(){
+
+    private void a() {
         TrafficCounter counter;
         ChannelTrafficShapingHandler handler;
     }
@@ -85,9 +98,37 @@ public class TrafficControlManager {
             plugin.getLogger().warn("无法为 {} (连接：{}) 初始化 MinecraftConnection 实例以创建 Pipeline 工具，将无法跟踪其流量消耗", event.getUsername(), event.getConnection());
             return;
         }
+        injectConnection(minecraftConnection);
+    }
+    @Subscribe(order = PostOrder.LAST)
+    public void playerConnected(ServerConnectedEvent event) {
+       Player player = event.getPlayer();
+       if(player instanceof ConnectedPlayer connectedPlayer){
+           injectConnection(connectedPlayer.getConnection());
+       }
+    }
+
+    public void injectConnection(MinecraftConnection minecraftConnection) {
+        if (minecraftConnection.getChannel().pipeline().get(GLOBAL_TRAFFIC_HANDLER_NAME) != null) {
+            minecraftConnection.getChannel().pipeline().remove(GLOBAL_TRAFFIC_HANDLER_NAME);
+        }
+        if (minecraftConnection.getChannel().pipeline().get(CHANNEL_TRAFFIC_HANDLER_NAME) != null) {
+            minecraftConnection.getChannel().pipeline().remove(CHANNEL_TRAFFIC_HANDLER_NAME);
+        }
         minecraftConnection.getChannel().pipeline().addLast(GLOBAL_TRAFFIC_HANDLER_NAME, globalTrafficHandler);
         ChannelTrafficShapingHandler channelTrafficShapingHandler = new ChannelTrafficShapingHandler(plugin.getConfig().getLong("channel-traffic-handler.check-interval"));
         minecraftConnection.getChannel().pipeline().addLast(CHANNEL_TRAFFIC_HANDLER_NAME, channelTrafficShapingHandler);
-        plugin.getLogger().info("开始处理 {} ({}) 的流量数据", event.getUsername(), event.getConnection());
+        startMetricForCompression(minecraftConnection);
     }
+
+    private void startMetricForCompression(MinecraftConnection minecraftConnection) {
+        if (minecraftConnection.getChannel().pipeline().get(GLOBAL_COMPRESSION_METRIC_NAME) != null) {
+            minecraftConnection.getChannel().pipeline().remove(GLOBAL_COMPRESSION_METRIC_NAME);
+        }
+        if (minecraftConnection.getChannel().pipeline().get("compression-decoder") != null) {
+            plugin.getLogger().info("压缩比开始统计！");
+            minecraftConnection.getChannel().pipeline().addBefore("compression-decoder", GLOBAL_COMPRESSION_METRIC_NAME, this.handler);
+        }
+    }
+
 }

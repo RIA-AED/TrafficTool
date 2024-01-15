@@ -7,6 +7,7 @@ import cc.carm.lib.easysql.hikari.HikariDataSource;
 import cc.carm.lib.easysql.manager.SQLManagerImpl;
 import com.ghostchu.plugins.traffictool.command.TrafficCommand;
 import com.ghostchu.plugins.traffictool.control.TrafficControlManager;
+import com.ghostchu.plugins.traffictool.control.compression.CompressionManager;
 import com.ghostchu.plugins.traffictool.database.DataTables;
 import com.ghostchu.plugins.traffictool.database.DatabaseManager;
 import com.ghostchu.plugins.traffictool.database.HikariUtil;
@@ -70,6 +71,7 @@ public class TrafficTool {
     private YamlConfiguration config;
     private TrafficControlManager trafficControlManager;
     private DatabaseManager databaseManager;
+    private CompressionManager compressionManager;
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
@@ -84,12 +86,12 @@ public class TrafficTool {
             }
         }
         this.config = YamlConfiguration.loadConfiguration(configFile);
-        this.trafficControlManager = new TrafficControlManager(this);
+        this.compressionManager = new CompressionManager(this);
+        this.trafficControlManager = new TrafficControlManager(this, this.compressionManager);
         server.getEventManager().register(this, this.trafficControlManager);
         server.getCommandManager().register("traffic", new TrafficCommand(this));
         setupDatabase();
         server.getScheduler().buildTask(this, this::recordMetricsToDatabase).repeat(1, TimeUnit.MINUTES).schedule();
-
     }
 
     public  void recordMetricsToDatabase() {
@@ -107,9 +109,7 @@ public class TrafficTool {
                         gCounter.lastWriteThroughput(), gCounter.lastWrittenBytes(), gHandler.getMaxGlobalWriteSize(),
                         gHandler.queuesSize(), gHandler.getMaxTimeWait(), gHandler.getMaxWriteDelay(), gHandler.getMaxWriteSize(),
                         gHandler.getReadLimit(), gHandler.getWriteLimit())
-                .executeAsync((sql)->logger.info("Global upload success"), (err,sql)->{
-                    err.printStackTrace();
-                });
+                .executeAsync((sql)->logger.info("Global upload success"), (err,sql)-> err.printStackTrace());
        PreparedSQLUpdateBatchAction<Integer> batchAction =  DataTables.TRAFFIC_PLAYER.createInsertBatch()
                         .setColumnNames("uuid", "username", "logging_at", "lastTime", "cumulativeReadBytes", "cumulativeWrittenBytes", "currentReadBytes",
                                 "currentWrittenBytes","getRealWriteThroughput", "getRealWrittenBytes", "lastCumulativeTime", "lastReadBytes",
@@ -152,6 +152,10 @@ public class TrafficTool {
         return trafficControlManager;
     }
 
+    public CompressionManager getCompressionManager() {
+        return compressionManager;
+    }
+
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }
@@ -166,6 +170,6 @@ public class TrafficTool {
         if (bytes < unit) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(unit));
         String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
-        return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+        return String.format("%.6f %sB", bytes / Math.pow(unit, exp), pre);
     }
 }
