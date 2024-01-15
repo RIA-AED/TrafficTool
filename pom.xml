@@ -200,12 +200,5 @@
             <version>8.2.0</version>
             <scope>compile</scope>
         </dependency>
-        <dependency>
-            <groupId>com.aayushatharva.brotli4j</groupId>
-            <artifactId>brotli4j</artifactId>
-            <version>1.15.0</version>
-        </dependency>
-
-
     </dependencies>
 </project>

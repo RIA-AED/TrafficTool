@@ -27,11 +27,17 @@ public class TrafficCommand implements SimpleCommand {
     public void execute(final Invocation invocation) {
         CommandSource source = invocation.source();
         String[] args = invocation.arguments();
-        if (args.length < 2) {
-            source.sendMessage(Component.text("错误的命令使用方法，请传递参数 view 或 config 或 compression，参数不足 2 时随意填写补足"));
+        if (args.length < 1) {
+            source.sendMessage(Component.text("错误的命令使用方法，可用参数 <view/config/upload/me>"));
             return;
         }
-        if (args[0].equalsIgnoreCase("upload")) {
+        if (args[0].equalsIgnoreCase("me")) {
+            if (!source.hasPermission("traffictool.me")) {
+                source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
+                return;
+            }
+            viewMe(invocation);
+        } else if (args[0].equalsIgnoreCase("upload")) {
             if (!source.hasPermission("traffictool.upload")) {
                 source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
                 return;
@@ -65,6 +71,36 @@ public class TrafficCommand implements SimpleCommand {
                 configPlayer(invocation);
             }
         }
+    }
+
+    private void viewMe(Invocation invocation) {
+        if (!(invocation.source() instanceof ConnectedPlayer)) {
+            invocation.source().sendMessage(Component.text("仅在线玩家可使用此命令"));
+        }
+        ConnectedPlayer player = (ConnectedPlayer) invocation.source();
+        Optional<ChannelTrafficShapingHandler> cHandlerOptional = plugin.getTrafficControlManager().getPlayerTrafficShapingHandler(player);
+        if (cHandlerOptional.isEmpty()) {
+            invocation.source().sendMessage(Component.text("Pipeline 未注册 ChannelTrafficShapingHandler，操作失败！").color(NamedTextColor.RED));
+            return;
+        }
+        ChannelTrafficShapingHandler handler = cHandlerOptional.get();
+        TrafficCounter counter = handler.trafficCounter();
+        player.sendMessage(Component.text("[TrafficTool] 您当前的套接字属性如下："));
+        player.sendMessage(Component.text("写速率限制：" + handler.getWriteLimit() + "/" + handler.getCheckInterval() + "ms"));
+        player.sendMessage(Component.text("读速率限制：" + handler.getWriteLimit() + "/" + handler.getCheckInterval() + "ms"));
+        player.sendMessage(Component.text("包队列大小：" + handler.queueSize() +" (长时间或过多的包堆积将导致 Ping 升高)"));
+        player.sendMessage(Component.text("---------------"));
+        invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
+        invocation.source().sendMessage(Component.text("累计写入字节数: " + formatBytes(counter.cumulativeWrittenBytes())));
+        invocation.source().sendMessage(Component.text("当前读取字节数: " + formatBytes(counter.currentReadBytes())));
+        invocation.source().sendMessage(Component.text("当前写入字节数: " + formatBytes(counter.currentWrittenBytes())));
+        invocation.source().sendMessage(Component.text("实际写入吞吐量: " + formatBytes(counter.getRealWriteThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("实际写入字节数: " + formatBytes(counter.getRealWrittenBytes().get())));
+        invocation.source().sendMessage(Component.text("最后累计时间: " + counter.lastCumulativeTime()));
+        invocation.source().sendMessage(Component.text("最后读取字节数: " + formatBytes(counter.lastReadBytes())));
+        invocation.source().sendMessage(Component.text("最后读取吞吐量: " + formatBytes(counter.lastReadThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最后写入吞吐量: " + formatBytes(counter.lastWriteThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最后写入字节数: " + formatBytes(counter.lastWrittenBytes())));
     }
 
     private void configPlayer(Invocation invocation) {
@@ -117,50 +153,50 @@ public class TrafficCommand implements SimpleCommand {
         }
         ChannelTrafficShapingHandler handler = cHandlerOptional.get();
 
-        invocation.source().sendMessage(Component.text("CheckInterval: " + handler.getCheckInterval()));
-        invocation.source().sendMessage(Component.text("MaxTimeWait: " + handler.getMaxTimeWait()));
-        invocation.source().sendMessage(Component.text("MaxWriteDelay: " + handler.getMaxWriteDelay()));
-        invocation.source().sendMessage(Component.text("MaxWriteSize: " + TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(), false)));
-        invocation.source().sendMessage(Component.text("ReadLimit: " + TrafficTool.humanReadableByteCount(handler.getReadLimit(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("Queue Size: " + handler.queueSize()));
+        invocation.source().sendMessage(Component.text("检查间隔时间: " + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最大等待时长: " + handler.getMaxTimeWait()));
+        invocation.source().sendMessage(Component.text("最大写入延迟: " + handler.getMaxWriteDelay()));
+        invocation.source().sendMessage(Component.text("最大写入大小: " + formatBytes(handler.getMaxWriteSize())));
+        invocation.source().sendMessage(Component.text("读速率限制: " + formatBytes(handler.getReadLimit()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("写速率限制: " + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("队列大小: " + handler.queueSize()+" (长时间或过多的包堆积将导致 Ping 升高)"));
         invocation.source().sendMessage(Component.text("-----"));
         TrafficCounter counter = handler.trafficCounter();
-        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(), false)));
-        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(), false)));
-        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(), false)));
-        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(), false)));
-        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(), false)));
-        invocation.source().sendMessage(Component.text("lastCumulativeTime: " + counter.lastCumulativeTime()));
-        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(), false)));
-        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(), false)));
+        invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
+        invocation.source().sendMessage(Component.text("累计写入字节数: " + formatBytes(counter.cumulativeWrittenBytes())));
+        invocation.source().sendMessage(Component.text("当前读取字节数: " + formatBytes(counter.currentReadBytes())));
+        invocation.source().sendMessage(Component.text("当前写入字节数: " + formatBytes(counter.currentWrittenBytes())));
+        invocation.source().sendMessage(Component.text("实际写入吞吐量: " + formatBytes(counter.getRealWriteThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("实际写入字节数: " + formatBytes(counter.getRealWrittenBytes().get())));
+        invocation.source().sendMessage(Component.text("最后累计时间: " + counter.lastCumulativeTime()));
+        invocation.source().sendMessage(Component.text("最后读取字节数: " + formatBytes(counter.lastReadBytes())));
+        invocation.source().sendMessage(Component.text("最后读取吞吐量: " + formatBytes(counter.lastReadThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最后写入吞吐量: " + formatBytes(counter.lastWriteThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最后写入字节数: " + formatBytes(counter.lastWrittenBytes())));
     }
 
     private void viewGlobal(Invocation invocation) {
         GlobalTrafficShapingHandler handler = plugin.getTrafficControlManager().getGlobalTrafficHandler();
-        invocation.source().sendMessage(Component.text("CheckInterval: " + handler.getCheckInterval()));
-        invocation.source().sendMessage(Component.text("MaxTimeWait: " + handler.getMaxTimeWait()));
-        invocation.source().sendMessage(Component.text("MaxWriteDelay: " + handler.getMaxWriteDelay()));
-        invocation.source().sendMessage(Component.text("MaxWriteSize: " + TrafficTool.humanReadableByteCount(handler.getMaxWriteSize(), false)));
-        invocation.source().sendMessage(Component.text("ReadLimit: " + TrafficTool.humanReadableByteCount(handler.getReadLimit(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("WriteLimit: " + TrafficTool.humanReadableByteCount(handler.getWriteLimit(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("Queue(s) Size: " + handler.queuesSize()));
+        invocation.source().sendMessage(Component.text("检查间隔时间: " + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最大等待时长: " + handler.getMaxTimeWait()));
+        invocation.source().sendMessage(Component.text("最大写入延迟: " + handler.getMaxWriteDelay()));
+        invocation.source().sendMessage(Component.text("最大写入大小: " + formatBytes(handler.getMaxWriteSize())));
+        invocation.source().sendMessage(Component.text("读速率限制: " + formatBytes(handler.getReadLimit()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("写速率限制: " + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("队列大小: " + handler.queuesSize()));
         invocation.source().sendMessage(Component.text("-----"));
         TrafficCounter counter = handler.trafficCounter();
-        invocation.source().sendMessage(Component.text("cumulativeReadBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeReadBytes(), false)));
-        invocation.source().sendMessage(Component.text("cumulativeWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.cumulativeWrittenBytes(), false)));
-        invocation.source().sendMessage(Component.text("currentReadBytes: " + TrafficTool.humanReadableByteCount(counter.currentReadBytes(), false)));
-        invocation.source().sendMessage(Component.text("currentWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.currentWrittenBytes(), false)));
-        invocation.source().sendMessage(Component.text("getRealWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.getRealWriteThroughput(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("getRealWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.getRealWrittenBytes().get(), false)));
-        invocation.source().sendMessage(Component.text("lastCumulativeTime: " + counter.lastCumulativeTime()));
-        invocation.source().sendMessage(Component.text("lastReadBytes: " + TrafficTool.humanReadableByteCount(counter.lastReadBytes(), false)));
-        invocation.source().sendMessage(Component.text("lastReadThroughput: " + TrafficTool.humanReadableByteCount(counter.lastReadThroughput(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("lastWriteThroughput: " + TrafficTool.humanReadableByteCount(counter.lastWriteThroughput(), false) + "/interval"));
-        invocation.source().sendMessage(Component.text("lastWrittenBytes: " + TrafficTool.humanReadableByteCount(counter.lastWrittenBytes(), false)));
+        invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
+        invocation.source().sendMessage(Component.text("累计写入字节数: " + formatBytes(counter.cumulativeWrittenBytes())));
+        invocation.source().sendMessage(Component.text("当前读取字节数: " + formatBytes(counter.currentReadBytes())));
+        invocation.source().sendMessage(Component.text("当前写入字节数: " + formatBytes(counter.currentWrittenBytes())));
+        invocation.source().sendMessage(Component.text("实际写入吞吐量: " + formatBytes(counter.getRealWriteThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("实际写入字节数: " + formatBytes(counter.getRealWrittenBytes().get())));
+        invocation.source().sendMessage(Component.text("最后累计时间: " + counter.lastCumulativeTime()));
+        invocation.source().sendMessage(Component.text("最后读取字节数: " + formatBytes(counter.lastReadBytes())));
+        invocation.source().sendMessage(Component.text("最后读取吞吐量: " + formatBytes(counter.lastReadThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最后写入吞吐量: " + formatBytes(counter.lastWriteThroughput()) + "/" + handler.getCheckInterval() + "ms"));
+        invocation.source().sendMessage(Component.text("最后写入字节数: " + formatBytes(counter.lastWrittenBytes())));
     }
 
     // This method allows you to control who can execute the command.
@@ -169,19 +205,7 @@ public class TrafficCommand implements SimpleCommand {
     // will be sent directly to the server on which the sender is located
     @Override
     public boolean hasPermission(final Invocation invocation) {
-        if (invocation.arguments().length < 1) {
-            return invocation.source().hasPermission("traffictool.help");
-        }
-        if (invocation.arguments()[0].equalsIgnoreCase("view")) {
-            return invocation.source().hasPermission("traffictool.view");
-        }
-        if (invocation.arguments()[0].equalsIgnoreCase("config")) {
-            return invocation.source().hasPermission("traffictool.config");
-        }
-        if (invocation.arguments()[0].equalsIgnoreCase("compression")) {
-            return invocation.source().hasPermission("traffictool.compression");
-        }
-        return invocation.source().hasPermission("traffictool.help");
+        return true;
     }
 
     // With this method you can control the suggestions to send
@@ -198,5 +222,9 @@ public class TrafficCommand implements SimpleCommand {
     @Override
     public CompletableFuture<List<String>> suggestAsync(final Invocation invocation) {
         return CompletableFuture.completedFuture(List.of());
+    }
+
+    private String formatBytes(long a) {
+        return TrafficTool.humanReadableByteCount(a, false);
     }
 }

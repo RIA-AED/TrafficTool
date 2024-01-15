@@ -6,11 +6,13 @@ import com.ghostchu.plugins.traffictool.control.TrafficControlManager;
 import com.ghostchu.plugins.traffictool.database.DataTables;
 import com.ghostchu.plugins.traffictool.database.DatabaseManager;
 import com.google.inject.Inject;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.proxy.connection.client.ConnectedPlayer;
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
 import io.netty.handler.traffic.GlobalTrafficShapingHandler;
 import io.netty.handler.traffic.TrafficCounter;
@@ -58,10 +60,15 @@ public class TrafficTool {
         this.config = YamlConfiguration.loadConfiguration(configFile);
         this.trafficControlManager = new TrafficControlManager(this);
         server.getEventManager().register(this, this.trafficControlManager);
-        server.getCommandManager().register("traffic", new TrafficCommand(this));
+        CommandMeta commandMeta = server.getCommandManager().metaBuilder("traffic")
+                // This will create a new alias for the command "/test"
+                // with the same arguments and functionality
+                .plugin(this)
+                .build();
+        server.getCommandManager().register(commandMeta, new TrafficCommand(this));
         try {
             setupDatabase();
-            server.getScheduler().buildTask(this, this::recordMetricsToDatabase).repeat(1, TimeUnit.MINUTES).schedule();
+            server.getScheduler().buildTask(this, this::recordMetricsToDatabase).repeat(3, TimeUnit.MINUTES).schedule();
         } catch (Throwable th) {
             logger.warn("无法初始化数据库，停止自动上传");
         }
@@ -88,17 +95,19 @@ public class TrafficTool {
                         "currentWrittenBytes", "getRealWriteThroughput", "getRealWrittenBytes", "lastCumulativeTime", "lastReadBytes",
                         "lastReadThroughput", "lastWriteThroughput", "lastWrittenBytes", "queueSize", "maxTimeWait", "maxWriteDelay", "maxWriteSize", "readLimit", "writeLimit");
         server.getAllPlayers().forEach(p -> {
-            Optional<ChannelTrafficShapingHandler> opt = trafficControlManager.getPlayerTrafficShapingHandler(p);
-            if (opt.isEmpty()) return;
-            ChannelTrafficShapingHandler cHandler = opt.get();
-            TrafficCounter cCounter = cHandler.trafficCounter();
-            batchAction.addParamsBatch(p.getUniqueId(), p.getUsername(), LocalDateTime.now(), cCounter.lastTime(),
-                    cCounter.cumulativeReadBytes(), cCounter.cumulativeWrittenBytes(), cCounter.currentReadBytes(),
-                    cCounter.currentWrittenBytes(), cCounter.getRealWriteThroughput(), cCounter.getRealWrittenBytes(),
-                    cCounter.lastCumulativeTime(), cCounter.lastReadBytes(), cCounter.lastReadThroughput(),
-                    cCounter.lastWriteThroughput(), cCounter.lastWrittenBytes(),
-                    cHandler.queueSize(), cHandler.getMaxTimeWait(), cHandler.getMaxWriteDelay(), cHandler.getMaxWriteSize(),
-                    cHandler.getReadLimit(), cHandler.getWriteLimit());
+            if(p instanceof ConnectedPlayer connectedPlayer) {
+                Optional<ChannelTrafficShapingHandler> opt = trafficControlManager.getPlayerTrafficShapingHandler(connectedPlayer);
+                if (opt.isEmpty()) return;
+                ChannelTrafficShapingHandler cHandler = opt.get();
+                TrafficCounter cCounter = cHandler.trafficCounter();
+                batchAction.addParamsBatch(p.getUniqueId(), p.getUsername(), LocalDateTime.now(), cCounter.lastTime(),
+                        cCounter.cumulativeReadBytes(), cCounter.cumulativeWrittenBytes(), cCounter.currentReadBytes(),
+                        cCounter.currentWrittenBytes(), cCounter.getRealWriteThroughput(), cCounter.getRealWrittenBytes(),
+                        cCounter.lastCumulativeTime(), cCounter.lastReadBytes(), cCounter.lastReadThroughput(),
+                        cCounter.lastWriteThroughput(), cCounter.lastWrittenBytes(),
+                        cHandler.queueSize(), cHandler.getMaxTimeWait(), cHandler.getMaxWriteDelay(), cHandler.getMaxWriteSize(),
+                        cHandler.getReadLimit(), cHandler.getWriteLimit());
+            }
         });
         batchAction.executeAsync(null, (err, sql) -> logger.warn("无法向数据库记录个人流量数据，相关数据已被丢弃", err));
     }
@@ -137,6 +146,6 @@ public class TrafficTool {
         if (bytes < unit) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(unit));
         String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
-        return String.format("%.6f %sB", bytes / Math.pow(unit, exp), pre);
+        return String.format("%.2f %sB", bytes / Math.pow(unit, exp), pre);
     }
 }
