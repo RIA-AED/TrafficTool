@@ -22,4 +22,72 @@ Velocity 玩家流量整型和统计工具。
 
 ## 示例返回
 
+`/traffic view global`:
+
+```
+> traffic view global
+[21:18:14 INFO]: 检查间隔时间: 1000ms
+[21:18:14 INFO]: 最大等待时长: 15000
+[21:18:14 INFO]: 最大写入延迟: 4000
+[21:18:14 INFO]: 最大写入大小: 4.00 MiB
+[21:18:14 INFO]: 读速率限制: 0 B/1000ms
+[21:18:14 INFO]: 写速率限制: 0 B/1000ms
+[21:18:14 INFO]: 队列大小: 0
+[21:18:14 INFO]: -----
+[21:18:14 INFO]: 累计读取字节数: 0 B
+[21:18:14 INFO]: 累计写入字节数: 43.90 GiB
+[21:18:14 INFO]: 当前读取字节数: 0 B
+[21:18:14 INFO]: 当前写入字节数: 243.98 KiB
+[21:18:14 INFO]: 实际写入吞吐量: 1.85 MiB/1000ms
+[21:18:14 INFO]: 实际写入字节数: 244.34 KiB
+[21:18:14 INFO]: 最后累计时间: 1705343672607
+[21:18:14 INFO]: 最后读取字节数: 0 B
+[21:18:14 INFO]: 最后读取吞吐量: 0 B/1000ms
+[21:18:14 INFO]: 最后写入吞吐量: 1.85 MiB/1000ms
+[21:18:14 INFO]: 最后写入字节数: 1.85 MiB
+```
+
+`/traffic view player <player>`:
+
+```
+> traffic view player Nanako_1
+[21:20:14 INFO]: 检查间隔时间: 1000ms
+[21:20:14 INFO]: 最大等待时长: 15000
+[21:20:14 INFO]: 最大写入延迟: 4000
+[21:20:14 INFO]: 最大写入大小: 4.00 MiB
+[21:20:14 INFO]: 读速率限制: 0 B/1000ms
+[21:20:14 INFO]: 写速率限制: 1.45 MiB/1000ms
+[21:20:14 INFO]: 队列大小: 0 (长时间或过多的包堆积将导致 Ping 升高)
+[21:20:14 INFO]: -----
+[21:20:14 INFO]: 累计读取字节数: 0 B
+[21:20:14 INFO]: 累计写入字节数: 274.62 MiB
+[21:20:14 INFO]: 当前读取字节数: 0 B
+[21:20:14 INFO]: 当前写入字节数: 1.31 KiB
+[21:20:14 INFO]: 实际写入吞吐量: 2.63 KiB/1000ms
+[21:20:14 INFO]: 实际写入字节数: 1.31 KiB
+[21:20:14 INFO]: 最后累计时间: 1705408771169
+[21:20:14 INFO]: 最后读取字节数: 0 B
+[21:20:14 INFO]: 最后读取吞吐量: 0 B/1000ms
+[21:20:14 INFO]: 最后写入吞吐量: 2.63 KiB/1000ms
+[21:20:14 INFO]: 最后写入字节数: 2.63 KiB
+```
+
+![image](https://github.com/RIA-AED/TrafficTool/assets/30802565/5dafc582-cb7c-4af2-97a8-f1ca605edfba)
+
+![image](https://github.com/RIA-AED/TrafficTool/assets/30802565/75800b17-88f2-427b-9a03-1770da856584)
+
+![image](https://github.com/RIA-AED/TrafficTool/assets/30802565/7be10ed5-78ed-4a8d-8402-2bda0f49a712)
+
+![image](https://github.com/RIA-AED/TrafficTool/assets/30802565/982ed19c-1298-4987-9787-1988cedb42a3)
+
+![image](https://github.com/RIA-AED/TrafficTool/assets/30802565/9e57c504-acc9-453f-9d84-d2499a14f7ec)
+
+![image](https://github.com/RIA-AED/TrafficTool/assets/30802565/881cf176-ad8c-4763-be63-cb6601612bea)
+
+
+## 注意事项
+
+* 数据库默认没有索引，需要手动设置
+* 数据库没有自动清理，请自己手动及时清理，避免爆硬盘
+
 
