@@ -20,6 +20,7 @@ Velocity 玩家流量整形和统计工具。
 * /traffic config global <连接最大写速度> <连接最大读速度> - 设置Velocity网络的流量整形（可以理解为进程限速）
 * /traffic config player <用户名> <连接最大写速度> <连接最大读速度> - 设置指定玩家的本次连接的流量整形
 * /traffic me - 查看自己的连接参数
+* /traffic reload - 重载插件
 
 ## 示例返回
 
