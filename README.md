@@ -90,4 +90,55 @@ Velocity 玩家流量整型和统计工具。
 * 数据库默认没有索引，需要手动设置
 * 数据库没有自动清理，请自己手动及时清理，避免爆硬盘
 
+## 示例配置文件
+
+```yaml
+global-traffic-handler:
+  scheduled-thread-pool-core-pool-size: 2
+  check-interval: 1000
+channel-traffic-handler:
+  check-interval: 1000
+
+
+player-traffic-shaping:
+  writeLimit: 1520435
+  readLimit: 0 # 0为不限制
+
+send-traffic-rule-update-notification: true
+
+ignored-servers:
+  - lobby
+
+
+# 数据库配置
+database:
+  # 使用 MySQL 存储数据，false 则直接崩溃
+  mysql: true
+  # 下面的配置应该就不用说了吧
+  host: localhost
+  port: 3306
+  database: mytraffic
+  user: trafficdb
+  password: password
+  # 表前缀
+  prefix: "myserver_"
+  # 使用 SSL
+  usessl: false
+  # 额外配置
+  properties:
+    connection-timeout: 60000
+    validation-timeout: 3000
+    idle-timeout: 60000
+    login-timeout: 10
+    maxLifeTime: 60000
+    maximum-pool-size: 8
+    minimum-idle: 2
+    cachePrepStmts: true
+    prepStmtCacheSize: 250
+    prepStmtCacheSqlLimit: 2048
+    useUnicode: true
+    characterEncoding: utf8
+    allowPublicKeyRetrieval: true
+```
+
 
