@@ -1,6 +1,6 @@
 # TrafficTool
 
-Velocity 玩家流量整型和统计工具。
+Velocity 玩家流量整形和统计工具。
 
 ## 功能
 
