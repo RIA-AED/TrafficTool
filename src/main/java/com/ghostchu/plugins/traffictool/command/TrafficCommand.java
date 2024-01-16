@@ -70,7 +70,19 @@ public class TrafficCommand implements SimpleCommand {
             if (args[1].equalsIgnoreCase("player")) {
                 configPlayer(invocation);
             }
+        }else if(args[0].equalsIgnoreCase("reload")){
+            if (!source.hasPermission("traffictool.config")) {
+                source.sendMessage(Component.text("权限不足！").color(NamedTextColor.RED));
+                return;
+            }
+            reloadPlugin(invocation);
         }
+    }
+
+    private void reloadPlugin(Invocation invocation) {
+        plugin.loadConfig();
+        plugin.getTrafficControlManager().injectEveryoneAlreadyInServer();
+        invocation.source().sendMessage(Component.text("OK！").color(NamedTextColor.GREEN));
     }
 
     private void viewMe(Invocation invocation) {
@@ -87,7 +99,7 @@ public class TrafficCommand implements SimpleCommand {
         TrafficCounter counter = handler.trafficCounter();
         player.sendMessage(Component.text("[TrafficTool] 您当前的套接字属性如下："));
         player.sendMessage(Component.text("写速率限制：" + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
-        player.sendMessage(Component.text("读速率限制：" + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
+        player.sendMessage(Component.text("读速率限制：" + formatBytes(handler.getReadLimit()) + "/" + handler.getCheckInterval() + "ms"));
         player.sendMessage(Component.text("包队列大小：" + handler.queueSize() +" (长时间或过多的包堆积将导致 Ping 升高)"));
         player.sendMessage(Component.text("---------------"));
         invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));

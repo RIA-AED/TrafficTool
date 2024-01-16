@@ -10,6 +10,9 @@ player-traffic-shaping:
 
 send-traffic-rule-update-notification: true
 
+ignored-servers:
+  - lobby
+
 # 数据库配置
 database:
   # 使用 MySQL 存储数据，false 则直接崩溃

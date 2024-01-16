@@ -48,17 +48,7 @@ public class TrafficTool {
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        File configFile = new File(dataDirectory.toFile(), "config.yml");
-        dataDirectory.toFile().mkdirs();
-        if (!configFile.exists()) {
-            try {
-                configFile.createNewFile();
-                Files.copy(getClass().getResourceAsStream("/config.yml"), configFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        this.config = YamlConfiguration.loadConfiguration(configFile);
+        loadConfig();
         this.trafficControlManager = new TrafficControlManager(this);
         server.getEventManager().register(this, this.trafficControlManager);
         CommandMeta commandMeta = server.getCommandManager().metaBuilder("traffic")
@@ -73,6 +63,20 @@ public class TrafficTool {
         } catch (Throwable th) {
             logger.warn("无法初始化数据库，停止自动上传");
         }
+    }
+
+    public void loadConfig() {
+        File configFile = new File(dataDirectory.toFile(), "config.yml");
+        dataDirectory.toFile().mkdirs();
+        if (!configFile.exists()) {
+            try {
+                configFile.createNewFile();
+                Files.copy(getClass().getResourceAsStream("/config.yml"), configFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        this.config = YamlConfiguration.loadConfiguration(configFile);
     }
 
     public void recordMetricsToDatabase() {
