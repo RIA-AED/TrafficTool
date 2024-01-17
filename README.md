@@ -9,6 +9,7 @@ Velocity 玩家流量整形和统计工具。
 * 查看实时流量
 * 使用命令动态修改整形参数（仅本次会话有效）
 * 数据采样转储（3分钟）
+* 支持突发流量处理
 
 ## 命令
 
@@ -103,8 +104,12 @@ channel-traffic-handler:
 
 
 player-traffic-shaping:
-  writeLimit: 1520435
-  readLimit: 0 # 0为不限制
+  avg:
+    writeLimit: 1413120
+    min-duration: 25
+  burst:
+    writeLimit: 3145728
+    max-duration: 8
 
 send-traffic-rule-update-notification: true
 
