@@ -6,7 +6,6 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.ConnectedPlayer;
 import io.netty.channel.Channel;
@@ -42,7 +41,13 @@ public class TrafficControlManager {
 
 
     public void injectEveryoneAlreadyInServer() {
-        plugin.getServer().getAllPlayers().forEach(this::injectPlayer);
+        plugin.getServer().getAllPlayers().forEach(p -> {
+            if (p.getCurrentServer().isPresent()) {
+                String serverName = p.getCurrentServer().get().getServerInfo().getName();
+                injectPlayer(p, serverName);
+            }
+
+        });
     }
 
     public Optional<ChannelTrafficShapingHandler> getPlayerTrafficShapingHandler(ConnectedPlayer connectedPlayer) {
@@ -57,16 +62,12 @@ public class TrafficControlManager {
         return globalTrafficHandler;
     }
 
-    public TrafficShapingRule getTrafficShapingRule(Player player) {
+    public TrafficShapingRule getTrafficShapingRule(Player player, String serverName) {
         if (player.hasPermission("traffictool.bypass.shaping")) {
-            return new TrafficShapingRule(true, 0, 0, 0,0);
+            return new TrafficShapingRule(true, 0, 0, 0, 0);
         }
-        if (player.getCurrentServer().isPresent()) {
-            ServerConnection serverConnection = player.getCurrentServer().get();
-            String serverName = serverConnection.getServer().getServerInfo().getName();
-            if (plugin.getConfig().getStringList("ignored-servers").contains(serverName)) {
-                return new TrafficShapingRule(false, 0, 0, 0,0);
-            }
+        if (plugin.getConfig().getStringList("ignored-servers").contains(serverName)) {
+            return new TrafficShapingRule(false, 0, 0, 0, 0);
         }
         long avgWriteLimit = plugin.getConfig().getLong("player-traffic-shaping.avg.writeLimit");
         long avgDuration = plugin.getConfig().getLong("player-traffic-shaping.avg.min-duration");
@@ -77,7 +78,7 @@ public class TrafficControlManager {
 
     @Subscribe(order = PostOrder.LAST)
     public void playerConnected(ServerConnectedEvent event) {
-        injectPlayer(event.getPlayer());
+        injectPlayer(event.getPlayer(), event.getServer().getServerInfo().getName());
     }
 
     @Subscribe(order = PostOrder.LAST)
@@ -88,25 +89,25 @@ public class TrafficControlManager {
         }
     }
 
-    public void injectPlayer(Player player) {
+    public void injectPlayer(Player player, String serverName) {
         if (player instanceof ConnectedPlayer connectedPlayer) {
             ChannelTrafficShapingHandler handler;
             Optional<ChannelTrafficShapingHandler> handlerOptional = getPlayerTrafficShapingHandler(connectedPlayer);
             handler = handlerOptional.orElseGet(() -> {
-                ChannelTrafficShapingHandler injectedHandler =  injectConnection(connectedPlayer.getConnection());
+                ChannelTrafficShapingHandler injectedHandler = injectConnection(connectedPlayer.getConnection());
                 plugin.getLogger().info("Injected ChannelTrafficShapingHandler to player {}", player.getUsername());
                 return injectedHandler;
             });
-            TrafficShapingRule rule = getTrafficShapingRule(connectedPlayer);
+            TrafficShapingRule rule = getTrafficShapingRule(connectedPlayer, serverName);
             Channel channel = connectedPlayer.getConnection().getChannel();
             TrafficController controller = trafficController.get(connectedPlayer.getUniqueId());
             if (controller == null) {
                 controller = new TrafficController(this, rule, connectedPlayer, channel, handler);
                 plugin.getLogger().info("Installed TrafficController to player {}", player.getUsername());
             } else {
-                    controller.stop();
-                    controller = new TrafficController(this, rule, connectedPlayer, channel, handler);
-                    plugin.getLogger().warn("Recreated traffic controller for player {}", connectedPlayer.getUsername());
+                controller.stop();
+                controller = new TrafficController(this, rule, connectedPlayer, channel, handler);
+                plugin.getLogger().info("Updated traffic controller for player {}", connectedPlayer.getUsername());
             }
             trafficController.put(connectedPlayer.getUniqueId(), controller);
             controller.start();
@@ -164,7 +165,7 @@ public class TrafficControlManager {
             this.start = false;
         }
 
-        public boolean isStarted(){
+        public boolean isStarted() {
             return this.start;
         }
 
@@ -177,7 +178,7 @@ public class TrafficControlManager {
                 }
 
                 // 检查是否存在手动覆写
-                if(shaper.getWriteLimit() != 0 && shaper.getWriteLimit() != rule.getBurstWriteLimit() && shaper.getWriteLimit() != rule.getAvgWriteLimit()){
+                if (shaper.getWriteLimit() != 0 && shaper.getWriteLimit() != rule.getBurstWriteLimit() && shaper.getWriteLimit() != rule.getAvgWriteLimit()) {
                     // 不允许更改
                     currentAvgDuration.set(0);
                     currentBurstDuration.set(0);
@@ -185,22 +186,22 @@ public class TrafficControlManager {
                     return;
                 }
 
-                if(shaper.trafficCounter().getRealWriteThroughput() > rule.getAvgWriteLimit()){
+                if (shaper.trafficCounter().getRealWriteThroughput() > rule.getAvgWriteLimit()) {
                     currentBurstDuration.incrementAndGet();
                     currentAvgDuration.decrementAndGet();
-                }else{
+                } else {
                     currentAvgDuration.incrementAndGet();
                     currentBurstDuration.decrementAndGet();
                 }
 
-                if(currentBurstDuration.get() > rule.getMaxBurstDuration()){
+                if (currentBurstDuration.get() > rule.getMaxBurstDuration()) {
                     // 重置 avg 计数器
                     currentAvgDuration.set(0);
                     // 陷入爆发管控阶段
                     inBurstRestriction.set(true);
                 }
 
-                if(currentAvgDuration.get() > rule.getMinAvgDuration()){
+                if (currentAvgDuration.get() > rule.getMinAvgDuration()) {
                     // 重置爆发计数器
                     currentBurstDuration.set(0);
                     // 解除爆发管控
