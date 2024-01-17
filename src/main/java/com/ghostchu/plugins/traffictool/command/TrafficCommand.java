@@ -1,6 +1,7 @@
 package com.ghostchu.plugins.traffictool.command;
 
 import com.ghostchu.plugins.traffictool.TrafficTool;
+import com.ghostchu.plugins.traffictool.control.TrafficControlManager;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
@@ -102,6 +103,11 @@ public class TrafficCommand implements SimpleCommand {
         player.sendMessage(Component.text("读速率限制：" + formatBytes(handler.getReadLimit()) + "/" + handler.getCheckInterval() + "ms"));
         player.sendMessage(Component.text("包队列大小：" + handler.queueSize() +" (长时间或过多的包堆积将导致 Ping 升高)"));
         player.sendMessage(Component.text("---------------"));
+        TrafficControlManager.TrafficController controller = plugin.getTrafficControlManager().getTrafficController().get(player.getUniqueId());
+        if(controller != null) {
+            player.sendMessage(Component.text(plugin.getTrafficControlManager().getTrafficController().get(player.getUniqueId()).toString()));
+        }
+        player.sendMessage(Component.text("---------------"));
         invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
         invocation.source().sendMessage(Component.text("累计写入字节数: " + formatBytes(counter.cumulativeWrittenBytes())));
         invocation.source().sendMessage(Component.text("当前读取字节数: " + formatBytes(counter.currentReadBytes())));
@@ -172,7 +178,12 @@ public class TrafficCommand implements SimpleCommand {
         invocation.source().sendMessage(Component.text("读速率限制: " + formatBytes(handler.getReadLimit()) + "/" + handler.getCheckInterval() + "ms"));
         invocation.source().sendMessage(Component.text("写速率限制: " + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
         invocation.source().sendMessage(Component.text("队列大小: " + handler.queueSize()+" (长时间或过多的包堆积将导致 Ping 升高)"));
-        invocation.source().sendMessage(Component.text("-----"));
+        player.sendMessage(Component.text("---------------"));
+        TrafficControlManager.TrafficController controller = plugin.getTrafficControlManager().getTrafficController().get(player.getUniqueId());
+        if(controller != null) {
+            player.sendMessage(Component.text(plugin.getTrafficControlManager().getTrafficController().get(player.getUniqueId()).toString()));
+        }
+        player.sendMessage(Component.text("---------------"));
         TrafficCounter counter = handler.trafficCounter();
         invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
         invocation.source().sendMessage(Component.text("累计写入字节数: " + formatBytes(counter.cumulativeWrittenBytes())));
@@ -196,7 +207,7 @@ public class TrafficCommand implements SimpleCommand {
         invocation.source().sendMessage(Component.text("读速率限制: " + formatBytes(handler.getReadLimit()) + "/" + handler.getCheckInterval() + "ms"));
         invocation.source().sendMessage(Component.text("写速率限制: " + formatBytes(handler.getWriteLimit()) + "/" + handler.getCheckInterval() + "ms"));
         invocation.source().sendMessage(Component.text("队列大小: " + handler.queuesSize()));
-        invocation.source().sendMessage(Component.text("-----"));
+        invocation.source().sendMessage(Component.text("---------------"));
         TrafficCounter counter = handler.trafficCounter();
         invocation.source().sendMessage(Component.text("累计读取字节数: " + formatBytes(counter.cumulativeReadBytes())));
         invocation.source().sendMessage(Component.text("累计写入字节数: " + formatBytes(counter.cumulativeWrittenBytes())));

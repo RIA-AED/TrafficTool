@@ -58,6 +58,10 @@ public class TrafficControlManager {
         return Optional.empty();
     }
 
+    public Map<UUID, TrafficController> getTrafficController() {
+        return trafficController;
+    }
+
     public GlobalTrafficShapingHandler getGlobalTrafficHandler() {
         return globalTrafficHandler;
     }
@@ -131,7 +135,7 @@ public class TrafficControlManager {
         return channelTrafficShapingHandler;
     }
 
-    static class TrafficController {
+    public static class TrafficController {
         private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
         private final TrafficControlManager parent;
         private final Channel channel;
@@ -241,6 +245,14 @@ public class TrafficControlManager {
                     .map(p -> (ConnectedPlayer) p)
                     .collect(Collectors.toList());
         }
-    }
 
+        @Override
+        public String toString() {
+            return "TrafficController{" +
+                    "currentBurstDuration=" + currentBurstDuration.get() +
+                    ", currentAvgDuration=" + currentAvgDuration.get() +
+                    ", inBurstRestriction=" + inBurstRestriction.get() +
+                    '}';
+        }
+    }
 }
