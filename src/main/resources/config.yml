@@ -1,12 +1,13 @@
 global-traffic-handler:
   scheduled-thread-pool-core-pool-size: 4
-  check-interval: 1000
-channel-traffic-handler:
-  check-interval: 1000
 
 player-traffic-shaping:
-  writeLimit: 1413120
-  readLimit: 0 # 0为不限制
+  avg:
+    writeLimit: 1413120
+    min-duration: 25
+  burst:
+    writeLimit: 3145728
+    max-duration: 8
 
 send-traffic-rule-update-notification: true
 
