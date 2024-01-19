@@ -32,6 +32,7 @@ public class TrafficControlManager {
     private final TrafficTool plugin;
     private final GlobalTrafficShapingHandler globalTrafficHandler;
     private final Map<UUID, TrafficController> trafficController = new ConcurrentSkipListMap<>();
+    private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
 
     public TrafficControlManager(TrafficTool plugin) {
         this.plugin = plugin;
@@ -94,6 +95,7 @@ public class TrafficControlManager {
     }
 
     public void injectPlayer(Player player, String serverName) {
+        synchronized (this){
         if (player instanceof ConnectedPlayer connectedPlayer) {
             ChannelTrafficShapingHandler handler;
             Optional<ChannelTrafficShapingHandler> handlerOptional = getPlayerTrafficShapingHandler(connectedPlayer);
@@ -116,6 +118,7 @@ public class TrafficControlManager {
             trafficController.put(connectedPlayer.getUniqueId(), controller);
             controller.start();
         }
+        }
     }
 
     public ChannelTrafficShapingHandler injectConnection(MinecraftConnection minecraftConnection) {
@@ -136,7 +139,7 @@ public class TrafficControlManager {
     }
 
     public static class TrafficController {
-        private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+
         private final TrafficControlManager parent;
         private final Channel channel;
         private final ChannelTrafficShapingHandler shaper;
@@ -144,6 +147,7 @@ public class TrafficControlManager {
         private final AtomicLong currentBurstDuration = new AtomicLong();
         private final AtomicLong currentAvgDuration = new AtomicLong();
         private final ConnectedPlayer player;
+        private final Runnable runnable;
         private volatile boolean start = false;
         private final AtomicBoolean inBurstRestriction = new AtomicBoolean();
 
@@ -153,6 +157,58 @@ public class TrafficControlManager {
             this.player = player;
             this.channel = channel;
             this.shaper = shaper;
+            this.runnable = () -> {
+                    // 验证 channel 有效
+                    if (!player.isActive() || !channel.isActive()) {
+                        shutdownController();
+                        return;
+                    }
+
+                    // 检查是否存在手动覆写
+                    if (shaper.getWriteLimit() != 0 && shaper.getWriteLimit() != rule.getBurstWriteLimit() && shaper.getWriteLimit() != rule.getAvgWriteLimit()) {
+                        // 不允许更改
+                        currentAvgDuration.set(-1);
+                        currentBurstDuration.set(-1);
+                        inBurstRestriction.set(false);
+                        return;
+                    }
+
+                    if (shaper.trafficCounter().lastWriteThroughput() >= rule.getAvgWriteLimit()) {
+                        currentBurstDuration.incrementAndGet();
+                        if (currentAvgDuration.decrementAndGet() < 0) {
+                            currentAvgDuration.set(0);
+                        }
+                    } else {
+                        currentAvgDuration.incrementAndGet();
+                        if (currentBurstDuration.decrementAndGet() < 0) {
+                            currentBurstDuration.set(0);
+                        }
+                    }
+
+                    if (currentBurstDuration.get() >= rule.getMaxBurstDuration()) {
+                        inBurstRestriction.set(true);
+                        currentAvgDuration.set(0);
+                    }
+
+                    if (currentAvgDuration.get() >= rule.getMinAvgDuration()) {
+                        inBurstRestriction.set(false);
+                        currentBurstDuration.set(0);
+                    }
+
+
+                    // 应用限速规则
+                    long writeLimit;
+                    if (inBurstRestriction.get()) {
+                        writeLimit = rule.getAvgWriteLimit();
+                    } else {
+                        writeLimit = rule.getBurstWriteLimit();
+                    }
+                    if (configure(writeLimit, shaper)) {
+                        parent.plugin.getLogger().info("已更新 {} 的流量整形规则: WriteLimit={}/s, CurrentBurstDuration={}, InBurstRestriction={}",
+                                player.getUsername(), TrafficTool.humanReadableByteCount(writeLimit, false),
+                                currentBurstDuration.get(), inBurstRestriction.get());
+                    }
+            };
         }
 
         public Channel getChannel() {
@@ -160,7 +216,7 @@ public class TrafficControlManager {
         }
 
         private void shutdownController() {
-            executor.shutdownNow();
+            parent.executor.remove(this.runnable);
             this.start = false;
         }
 
@@ -174,57 +230,7 @@ public class TrafficControlManager {
         }
 
         public void start() {
-            executor.scheduleAtFixedRate(() -> {
-                // 验证 channel 有效
-                if (!player.isActive() || !channel.isActive()) {
-                    shutdownController();
-                    return;
-                }
-
-                // 检查是否存在手动覆写
-                if (shaper.getWriteLimit() != 0 && shaper.getWriteLimit() != rule.getBurstWriteLimit() && shaper.getWriteLimit() != rule.getAvgWriteLimit()) {
-                    // 不允许更改
-                    currentAvgDuration.set(0);
-                    currentBurstDuration.set(0);
-                    inBurstRestriction.set(false);
-                    return;
-                }
-
-                if (shaper.trafficCounter().getRealWriteThroughput() > rule.getAvgWriteLimit()) {
-                    currentBurstDuration.incrementAndGet();
-                    currentAvgDuration.decrementAndGet();
-                } else {
-                    currentAvgDuration.incrementAndGet();
-                    currentBurstDuration.decrementAndGet();
-                }
-
-                if (currentBurstDuration.get() > rule.getMaxBurstDuration()) {
-                    // 重置 avg 计数器
-                    currentAvgDuration.set(0);
-                    // 陷入爆发管控阶段
-                    inBurstRestriction.set(true);
-                }
-
-                if (currentAvgDuration.get() > rule.getMinAvgDuration()) {
-                    // 重置爆发计数器
-                    currentBurstDuration.set(0);
-                    // 解除爆发管控
-                    inBurstRestriction.set(false);
-                }
-
-                // 应用限速规则
-                long writeLimit;
-                if (inBurstRestriction.get()) {
-                    writeLimit = rule.getAvgWriteLimit();
-                } else {
-                    writeLimit = rule.getBurstWriteLimit();
-                }
-                if (configure(writeLimit, shaper)) {
-                    parent.plugin.getLogger().info("已更新 {} 的流量整形规则: WriteLimit={}/s, CurrentBurstDuration={}, InBurstRestriction={}",
-                            player.getUsername(), TrafficTool.humanReadableByteCount(writeLimit, false),
-                            currentBurstDuration.get(), inBurstRestriction.get());
-                }
-            }, 0, 1000, TimeUnit.MILLISECONDS);
+            parent.executor.scheduleAtFixedRate(this.runnable, 0, 1000, TimeUnit.MILLISECONDS);
             this.start = true;
         }
 
