@@ -45,6 +45,8 @@ public class TrafficTool {
     private YamlConfiguration config;
     private TrafficControlManager trafficControlManager;
     private DatabaseManager databaseManager;
+    @Inject
+    private Metrics.Factory metricsFactory;
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
@@ -63,6 +65,7 @@ public class TrafficTool {
         } catch (Throwable th) {
             logger.warn("无法初始化数据库，停止自动上传");
         }
+        Metrics metrics = metricsFactory.make(this, 20811);
     }
 
     public void loadConfig() {
