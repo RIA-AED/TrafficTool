@@ -164,6 +164,10 @@ public class TrafficControlManager {
                         return;
                     }
 
+                    if(!start){
+                        return;
+                    }
+
                     // 检查是否存在手动覆写
                     if (shaper.getWriteLimit() != 0 && shaper.getWriteLimit() != rule.getBurstWriteLimit() && shaper.getWriteLimit() != rule.getAvgWriteLimit()) {
                         // 不允许更改
