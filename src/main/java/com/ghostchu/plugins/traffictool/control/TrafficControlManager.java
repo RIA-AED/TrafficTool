@@ -121,7 +121,27 @@ public class TrafficControlManager {
         }
     }
 
+    public void uninjectPlayer(Player player) {
+        synchronized (this){
+            if (player instanceof ConnectedPlayer connectedPlayer) {
+                TrafficController controller = trafficController.get(connectedPlayer.getUniqueId());
+                if(controller != null){
+                    controller.stop();
+                }
+                uninject(((ConnectedPlayer) player).getConnection());
+            }
+        }
+    }
+
     public ChannelTrafficShapingHandler injectConnection(MinecraftConnection minecraftConnection) {
+        uninject(minecraftConnection);
+        minecraftConnection.getChannel().pipeline().addLast(GLOBAL_TRAFFIC_HANDLER_NAME, globalTrafficHandler);
+        ChannelTrafficShapingHandler channelTrafficShapingHandler = new ChannelTrafficShapingHandler(1000);
+        minecraftConnection.getChannel().pipeline().addLast(CHANNEL_TRAFFIC_HANDLER_NAME, channelTrafficShapingHandler);
+        return channelTrafficShapingHandler;
+    }
+
+    public void uninject(MinecraftConnection minecraftConnection) {
         if (minecraftConnection.getChannel().pipeline().get(GLOBAL_TRAFFIC_HANDLER_NAME) != null) {
             minecraftConnection.getChannel().pipeline().remove(GLOBAL_TRAFFIC_HANDLER_NAME);
         }
@@ -132,10 +152,6 @@ public class TrafficControlManager {
         if (minecraftConnection.getChannel().pipeline().get(GLOBAL_COMPRESSION_METRIC_NAME) != null) {
             minecraftConnection.getChannel().pipeline().remove(GLOBAL_COMPRESSION_METRIC_NAME);
         }
-        minecraftConnection.getChannel().pipeline().addLast(GLOBAL_TRAFFIC_HANDLER_NAME, globalTrafficHandler);
-        ChannelTrafficShapingHandler channelTrafficShapingHandler = new ChannelTrafficShapingHandler(1000);
-        minecraftConnection.getChannel().pipeline().addLast(CHANNEL_TRAFFIC_HANDLER_NAME, channelTrafficShapingHandler);
-        return channelTrafficShapingHandler;
     }
 
     public static class TrafficController {
@@ -165,6 +181,7 @@ public class TrafficControlManager {
                     }
 
                     if(!start){
+                        shutdownController();
                         return;
                     }
 
@@ -234,8 +251,8 @@ public class TrafficControlManager {
         }
 
         public void start() {
-            parent.executor.scheduleAtFixedRate(this.runnable, 0, 1000, TimeUnit.MILLISECONDS);
             this.start = true;
+            parent.executor.scheduleAtFixedRate(this.runnable, 0, 1000, TimeUnit.MILLISECONDS);
         }
 
         private boolean configure(long writeLimit, ChannelTrafficShapingHandler handler) {
